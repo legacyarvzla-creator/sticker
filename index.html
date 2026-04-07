@@ -4,13 +4,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    
     <style>
-        body { margin: 0; overflow: hidden; }
-        /* Forzamos a que el video original no se vea nunca en la pantalla */
-        #arVideo { display: none; }
+        body { margin: 0; overflow: hidden; background-color: black; }
         #ui { 
-            position: absolute; z-index: 1000; bottom: 20px; left: 50%; 
-            transform: translateX(-50%); 
+            position: absolute; z-index: 9999; bottom: 20px; left: 50%; 
+            transform: translateX(-50%); width: 100%; text-align: center;
         }
         button { 
             padding: 15px 30px; border-radius: 30px; border: none; 
@@ -20,31 +19,36 @@
 </head>
 <body>
     <div id="ui">
-        <button id="playBtn">ACTIVAR CÁMARA Y VIDEO</button>
+        <button id="startBtn">ACTIVAR CÁMARA</button>
     </div>
 
-    <video id="arVideo" src="./video.mp4" loop crossorigin="anonymous" muted playsinline webkit-playsinline></video>
+    <video id="vid" src="./video.mp4" loop crossorigin="anonymous" muted playsinline webkit-playsinline style="display:none"></video>
 
-    <a-scene mindar-image="imageTargetSrc: ./objetivos.mind; autoStart: true;" 
-             embedded color-space="sRGB" 
-             renderer="colorManagement: true, physicallyCorrectLights" 
-             vr-mode-ui="enabled: false" 
-             device-orientation-permission-ui="enabled: false">
+    <a-scene mindar-image="imageTargetSrc: ./objetivos.mind; autoStart: false;" 
+             embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" 
+             vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
         
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <a-entity mindar-image-target="targetIndex: 0">
-            <a-video src="#arVideo" width="1" height="1.5" position="0 0 0.1"></a-video>
+        <a-entity id="target" mindar-image-target="targetIndex: 0">
+            <a-video src="#vid" width="1" height="1.5" position="0 0 0.1"></a-video>
         </a-entity>
     </a-scene>
 
     <script>
-        const btn = document.querySelector("#playBtn");
-        const video = document.querySelector("#arVideo");
+        const btn = document.querySelector("#startBtn");
+        const sceneEl = document.querySelector('a-scene');
+        const video = document.querySelector("#vid");
 
         btn.addEventListener('click', () => {
-            // Esto "despierta" el video y oculta el botón
+            // 1. Iniciamos la escena de MindAR manualmente
+            const arSystem = sceneEl.systems["mindar-image-system"];
+            arSystem.start(); 
+            
+            // 2. Despertamos el video
             video.play();
+            
+            // 3. Quitamos el botón
             btn.style.display = "none";
         });
     </script>
