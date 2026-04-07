@@ -4,43 +4,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    
     <style>
         body { margin: 0; overflow: hidden; }
-        /* Esto evita que el video se vea fuera de la realidad aumentada */
-        #arVideo { 
-            display: none; 
-            position: absolute; 
-            pointer-events: none;
-        }
+        /* Forzamos a que el video original no se vea nunca en la pantalla */
+        #arVideo { display: none; }
         #ui { 
-            position: absolute; z-index: 999; bottom: 20px; left: 50%; 
-            transform: translateX(-50%); text-align: center;
+            position: absolute; z-index: 1000; bottom: 20px; left: 50%; 
+            transform: translateX(-50%); 
         }
         button { 
             padding: 15px 30px; border-radius: 30px; border: none; 
             background: #e91e63; color: white; font-weight: bold; cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
     </style>
 </head>
 <body>
     <div id="ui">
-        <button id="playBtn">INICIAR EXPERIENCIA</button>
+        <button id="playBtn">ACTIVAR CÁMARA Y VIDEO</button>
     </div>
 
+    <video id="arVideo" src="./video.mp4" loop crossorigin="anonymous" muted playsinline webkit-playsinline></video>
+
     <a-scene mindar-image="imageTargetSrc: ./objetivos.mind; autoStart: true;" 
-             color-space="sRGB" 
+             embedded color-space="sRGB" 
              renderer="colorManagement: true, physicallyCorrectLights" 
              vr-mode-ui="enabled: false" 
              device-orientation-permission-ui="enabled: false">
         
-        <a-assets>
-            <video id="arVideo" src="./video.mp4" 
-                   loop="true" crossorigin="anonymous" 
-                   muted playsinline webkit-playsinline></video>
-        </a-assets>
-
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0">
@@ -53,12 +43,9 @@
         const video = document.querySelector("#arVideo");
 
         btn.addEventListener('click', () => {
-            // Intentamos reproducir el video
-            video.play().then(() => {
-                btn.style.display = "none";
-            }).catch((err) => {
-                console.error("Error:", err);
-            });
+            // Esto "despierta" el video y oculta el botón
+            video.play();
+            btn.style.display = "none";
         });
     </script>
 </body>
