@@ -4,36 +4,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    <script src="https://unpkg.com/aframe-record-component@0.1.3/dist/aframe-record-component.min.js"></script>
     
     <style>
-        body { margin: 0; overflow: hidden; background: #000; }
-        #ui-controls { 
+        /* RESET TOTAL PARA EVITAR PANTALLA DIVIDIDA */
+        html, body { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; background-color: #000; 
+        }
+
+        #ui { 
             position: absolute; z-index: 1000; bottom: 30px; left: 50%; 
             transform: translateX(-50%); width: 100%; text-align: center;
-            display: flex; flex-direction: column; align-items: center; gap: 10px;
         }
-        .btn { 
-            padding: 15px 30px; border-radius: 30px; border: none; 
-            font-weight: bold; font-size: 16px; cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-        }
-        #startBtn { background: #00f2ff; color: #000; }
-        #recordBtn { background: #e91e63; color: #fff; display: none; }
 
-        /* Forzamos que la cámara se vea */
-        .a-canvas { position: absolute !important; top: 0; left: 0; z-index: 0; }
+        .btn { 
+            padding: 16px 32px; border-radius: 50px; border: none; 
+            background: #00f2ff; color: #000; font-weight: bold; font-size: 18px;
+            box-shadow: 0 4px 15px rgba(0,242,255,0.4);
+        }
+
+        /* FORZAR LA CÁMARA A PANTALLA COMPLETA */
+        .mindar-ui-overlay { z-index: 10; }
+        canvas { 
+            width: 100vw !important; 
+            height: 100vh !important; 
+            object-fit: cover !important; 
+        }
     </style>
 </head>
 <body>
 
-    <div id="ui-controls">
-        <button id="startBtn" class="btn">ACTIVAR EXPERIENCIA</button>
-        <button id="recordBtn" class="btn">🔴 GRABAR VIDEO</button>
+    <div id="ui">
+        <button id="startBtn" class="btn">ACTIVAR CÁMARA</button>
     </div>
 
-    <a-scene record="precision: 0.6; fps: 30" 
-             mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: no;" 
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: no; filterMinCF: 0.0001; filterBeta: 0.001;" 
              embedded 
              renderer="colorManagement: true; alpha: true" 
              vr-mode-ui="enabled: false" 
@@ -49,42 +54,33 @@
             <a-video src="#vid" 
                      width="1" height="1" 
                      position="0 0 0.1" 
-                     material="shader: flat; side: double; transparent: true">
+                     material="shader: flat; blending: additive; transparent: true">
             </a-video>
         </a-entity>
     </a-scene>
 
     <script>
-        const startBtn = document.querySelector("#startBtn");
-        const recordBtn = document.querySelector("#recordBtn");
+        const btn = document.querySelector("#startBtn");
         const sceneEl = document.querySelector('a-scene');
         const video = document.querySelector("#vid");
 
-        startBtn.addEventListener('click', () => {
+        btn.addEventListener('click', () => {
             const arSystem = sceneEl.systems["mindar-image-system"];
+            
+            // 1. Encender AR
             arSystem.start(); 
             
-            // Forzamos audio y play
+            // 2. Play al video con audio
             video.muted = false;
-            video.play().catch(() => {
+            video.play().then(() => {
+                console.log("Video y audio OK");
+            }).catch(err => {
+                console.log("Fallo audio, forzando video");
                 video.muted = true;
                 video.play();
             });
             
-            startBtn.style.display = "none";
-            recordBtn.style.display = "block";
-        });
-
-        let isRecording = false;
-        recordBtn.addEventListener('click', () => {
-            if (!isRecording) {
-                sceneEl.emit('start-recording');
-                recordBtn.innerText = "⏹️ DETENER";
-            } else {
-                sceneEl.emit('stop-recording');
-                recordBtn.innerText = "🔴 GRABAR VIDEO";
-            }
-            isRecording = !isRecording;
+            btn.style.display = "none";
         });
     </script>
 </body>
