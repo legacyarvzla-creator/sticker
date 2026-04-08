@@ -6,25 +6,55 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; }
-        #ui { position: absolute; z-index: 1000; bottom: 30px; left: 50%; transform: translateX(-50%); width: 100%; text-align: center; }
-        .btn { padding: 16px 32px; border-radius: 50px; border: none; background: #00f2ff; color: #000; font-weight: bold; font-size: 18px; cursor: pointer; }
-        
-        /* Forzamos que el canvas ocupe TODO el espacio para evitar la mitad negra */
-        canvas { width: 100% !important; height: 100% !important; position: absolute; top: 0; left: 0; }
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        #ui { position: absolute; z-index: 1000; bottom: 30px; left: 50%; transform: translateX(-50%); }
+        .btn { padding: 16px 32px; border-radius: 50px; border: none; background: #00f2ff; color: #000; font-weight: bold; font-size: 18px; }
+        canvas { width: 100% !important; height: 100% !important; }
     </style>
+
+    <script>
+        // SHADER PERSONALIZADO: Actúa como un Luma Key (Elimina lo negro)
+        AFRAME.registerShader('luma-key', {
+          schema: { src: {type: 'map'} },
+          init: function(data) {
+            this.textureLoader = new THREE.TextureLoader();
+            this.material = new THREE.ShaderMaterial({
+              uniforms: { tex: {value: null} },
+              vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                  vUv = uv;
+                  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+              `,
+              fragmentShader: `
+                uniform sampler2D tex;
+                varying vec2 vUv;
+                void main() {
+                  vec4 color = texture2D(tex, vUv);
+                  // Si el color es muy oscuro (negro), lo hacemos transparente
+                  float luma = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+                  if (luma < 0.1) discard; 
+                  gl_FragColor = color;
+                }
+              `,
+              transparent: true
+            });
+          },
+          update: function(data) {
+            this.material.uniforms.tex.value = new THREE.VideoTexture(data.src);
+          }
+        });
+    </script>
 </head>
 <body>
 
     <div id="ui">
-        <button id="startBtn" class="btn">ACTIVAR CÁMARA</button>
+        <button id="startBtn" class="btn">INICIAR AR</button>
     </div>
 
     <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: no; filterMinCF: 0.0001; filterBeta: 0.001;" 
-             embedded 
-             renderer="colorManagement: true; alpha: true" 
-             vr-mode-ui="enabled: false" 
-             device-orientation-permission-ui="enabled: false">
+             embedded renderer="colorManagement: true; alpha: true" vr-mode-ui="enabled: false">
         
         <a-assets>
             <video id="vid" src="./video.mp4" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
@@ -33,22 +63,18 @@
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0">
-            <a-video src="#vid" 
-                     width="1" height="1" 
-                     position="0 0 0.1" 
-                     material="shader: flat; blending: additive; transparent: true">
-            </a-video>
+            <a-entity geometry="primitive: plane; width: 1; height: 1"
+                      material="shader: luma-key; src: #vid"
+                      position="0 0 0.1">
+            </a-entity>
         </a-entity>
     </a-scene>
 
     <script>
         const btn = document.querySelector("#startBtn");
-        const sceneEl = document.querySelector('a-scene');
         const video = document.querySelector("#vid");
-
         btn.addEventListener('click', () => {
-            const arSystem = sceneEl.systems["mindar-image-system"];
-            arSystem.start(); 
+            document.querySelector('a-scene').systems["mindar-image-system"].start();
             video.play();
             btn.style.display = "none";
         });
