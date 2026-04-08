@@ -5,25 +5,71 @@
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
+    <script>
+      AFRAME.registerShader('chromakey', {
+        schema: {
+          src: {type: 'map'},
+          color: {type: 'color', default: '0 1 0'}, // Color a quitar (Verde Puro RGB)
+          threshold: {type: 'number', default: 0.1}, // Qué tan exacto debe ser el color
+        },
+        init: function (data) {
+          const videoTexture = new THREE.VideoTexture(data.src);
+          videoTexture.minFilter = THREE.LinearFilter;
+          this.material = new THREE.ShaderMaterial({
+            uniforms: {
+              tex: {value: videoTexture},
+              color: {value: new THREE.Color(data.color)},
+              threshold: {value: data.threshold}
+            },
+            vertexShader: `
+              varying vec2 vUv;
+              void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              }
+            `,
+            fragmentShader: `
+              uniform sampler2D tex;
+              uniform vec3 color;
+              uniform float threshold;
+              varying vec2 vUv;
+              void main() {
+                vec4 texColor = texture2D(tex, vUv);
+                float diff = distance(texColor.rgb, color);
+                if (diff < threshold) {
+                  discard;
+                } else {
+                  gl_FragColor = texColor;
+                }
+              }
+            `,
+            transparent: true // ¡Importante!
+          });
+        },
+        update: function (data) {
+          this.material.uniforms.src.value = new THREE.VideoTexture(data.src);
+        }
+      });
+    </script>
     <style>
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            background-color: #000; 
-            width: 100vw;
-            height: 100vh;
+        /* 2. CSS Reset agresivo para forzar pantalla completa sin descuadres */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            position: fixed; /* Evita scroll en iOS */
         }
 
-        /* Forzamos que el canvas de MindAR ocupe toda la pantalla */
-        .mindar-ui-overlay { z-index: 100; }
-        
         #ui { 
             position: absolute; 
             z-index: 9999; 
-            bottom: 30px; 
+            bottom: 40px; /* Un poco más arriba para salvar barras de navegación */
             left: 50%; 
             transform: translateX(-50%); 
-            width: 100%; 
+            width: 80%; 
             text-align: center;
         }
 
@@ -35,51 +81,45 @@
             color: white; 
             font-size: 18px;
             font-weight: bold; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             cursor: pointer;
+            width: 100%; /* Botón más grande para móviles */
         }
 
-        /* Corrección para la pantalla dividida */
-        video, canvas {
+        /* Corrección de la pantalla dividida */
+        .a-canvas {
             width: 100% !important;
             height: 100% !important;
             top: 0;
             left: 0;
-            object-fit: cover;
         }
     </style>
 </head>
 <body>
 
     <div id="ui">
-        <button id="startBtn">ACTIVAR EXPERIENCIA</button>
+        <button id="startBtn">COMENZAR EXPERIENCIA</button>
     </div>
 
     <video id="vid" src="./video.mp4" 
            loop="true" 
            crossorigin="anonymous" 
-           muted="true" 
            playsinline 
            webkit-playsinline 
            style="display:none">
     </video>
 
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: no;" 
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: no; filterMinCF: 0.0001; filterBeta: 0.001;" 
              embedded 
              color-space="sRGB" 
              renderer="colorManagement: true, physicallyCorrectLights" 
              vr-mode-ui="enabled: false" 
              device-orientation-permission-ui="enabled: false">
         
-        <a-assets>
-            </a-assets>
-
-        <a-camera position="0 0 0" look-controls="enabled: false" cursor="fuse: false; rayOrigin: mouse;" raycaster="far: 10000; objects: .clickable"></a-camera>
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0">
-            <a-plane color="blue" opacity="0.3" width="1" height="1" position="0 0 0"></a-plane>
-            
-            <a-video src="#vid" 
+            <a-video material="shader: chromakey; src: #vid; color: 0 1 0; threshold: 0.1" 
                      width="1" 
                      height="1" 
                      position="0 0 0.01">
@@ -93,24 +133,19 @@
         const video = document.querySelector("#vid");
 
         btn.addEventListener('click', () => {
-            // Iniciamos MindAR
             const arSystem = sceneEl.systems["mindar-image-system"];
             arSystem.start(); 
             
-            // Forzamos reproducción del video
+            // Intentamos reproducir con audio. Si falla, al menos el tracking arranca.
             video.play().then(() => {
-                console.log("Video reproduciendo");
+                console.log("Video con audio arrancó");
             }).catch(err => {
-                console.log("Error en video:", err);
+                console.log("Audio bloqueado, reproduciendo en silencio:", err);
+                video.muted = true;
+                video.play();
             });
             
-            // Escondemos UI
             btn.style.display = "none";
-        });
-
-        // Eventos de detección para debug (opcional, te avisa en consola si detecta)
-        sceneEl.addEventListener("targetFound", event => {
-            console.log("¡Target detectado!");
         });
     </script>
 </body>
