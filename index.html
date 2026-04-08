@@ -6,10 +6,12 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
-        /* RESET TOTAL PARA EVITAR PANTALLA DIVIDIDA */
-        html, body { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            overflow: hidden; background-color: #000; 
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: transparent; }
+        
+        /* Aseguramos que la cámara esté al fondo y sea visible */
+        canvas { 
+            position: absolute !important; 
+            z-index: 0 !important; 
         }
 
         #ui { 
@@ -21,14 +23,7 @@
             padding: 16px 32px; border-radius: 50px; border: none; 
             background: #00f2ff; color: #000; font-weight: bold; font-size: 18px;
             box-shadow: 0 4px 15px rgba(0,242,255,0.4);
-        }
-
-        /* FORZAR LA CÁMARA A PANTALLA COMPLETA */
-        .mindar-ui-overlay { z-index: 10; }
-        canvas { 
-            width: 100vw !important; 
-            height: 100vh !important; 
-            object-fit: cover !important; 
+            cursor: pointer;
         }
     </style>
 </head>
@@ -38,9 +33,9 @@
         <button id="startBtn" class="btn">ACTIVAR CÁMARA</button>
     </div>
 
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: no; filterMinCF: 0.0001; filterBeta: 0.001;" 
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: no;" 
              embedded 
-             renderer="colorManagement: true; alpha: true" 
+             renderer="colorManagement: true; alpha: true; antialias: true;" 
              vr-mode-ui="enabled: false" 
              device-orientation-permission-ui="enabled: false">
         
@@ -67,20 +62,25 @@
         btn.addEventListener('click', () => {
             const arSystem = sceneEl.systems["mindar-image-system"];
             
-            // 1. Encender AR
+            // 1. Iniciamos la cámara primero
             arSystem.start(); 
             
-            // 2. Play al video con audio
-            video.muted = false;
-            video.play().then(() => {
-                console.log("Video y audio OK");
-            }).catch(err => {
-                console.log("Fallo audio, forzando video");
-                video.muted = true;
-                video.play();
-            });
+            // 2. Esperamos un segundo para que la cámara estabilice antes de soltar el audio
+            setTimeout(() => {
+                video.muted = false;
+                video.play().catch(() => {
+                    // Si el navegador se pone terco con el audio, lo silenciamos para que al menos se vea el video
+                    video.muted = true;
+                    video.play();
+                });
+            }, 1000);
             
             btn.style.display = "none";
+        });
+
+        // Evento de seguridad: Si la cámara falla, esto nos avisará en la consola
+        sceneEl.addEventListener("arError", (event) => {
+            console.log("Error de AR detectado:", event);
         });
     </script>
 </body>
