@@ -6,13 +6,14 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <script>
+      // Registramos el shader antes de que cargue la escena
       AFRAME.registerShader('chromakey', {
         schema: {
           src: {type: 'map'},
-          color: {type: 'color', default: '0 1 0'}, // Color a quitar (Verde Puro RGB)
-          threshold: {type: 'number', default: 0.1}, // Qué tan exacto debe ser el color
+          color: {type: 'color', default: '0 1 0'},
+          threshold: {type: 'number', default: 0.1}
         },
-        init: function (data) {
+        init: function(data) {
           const videoTexture = new THREE.VideoTexture(data.src);
           videoTexture.minFilter = THREE.LinearFilter;
           this.material = new THREE.ShaderMaterial({
@@ -43,86 +44,48 @@
                 }
               }
             `,
-            transparent: true // ¡Importante!
+            transparent: true
           });
         },
-        update: function (data) {
+        update: function(data) {
           this.material.uniforms.src.value = new THREE.VideoTexture(data.src);
         }
       });
     </script>
+
     <style>
-        /* 2. CSS Reset agresivo para forzar pantalla completa sin descuadres */
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #000;
-            position: fixed; /* Evita scroll en iOS */
-        }
-
+        body { margin: 0; overflow: hidden; background: #000; }
         #ui { 
-            position: absolute; 
-            z-index: 9999; 
-            bottom: 40px; /* Un poco más arriba para salvar barras de navegación */
-            left: 50%; 
-            transform: translateX(-50%); 
-            width: 80%; 
-            text-align: center;
+            position: absolute; z-index: 1000; bottom: 30px; left: 50%; 
+            transform: translateX(-50%); width: 100%; text-align: center;
         }
-
         button { 
-            padding: 16px 32px; 
-            border-radius: 50px; 
-            border: none; 
-            background: #e91e63; 
-            color: white; 
-            font-size: 18px;
-            font-weight: bold; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            cursor: pointer;
-            width: 100%; /* Botón más grande para móviles */
+            padding: 15px 30px; border-radius: 30px; border: none; 
+            background: #e91e63; color: white; font-weight: bold; font-size: 18px;
         }
-
-        /* Corrección de la pantalla dividida */
-        .a-canvas {
-            width: 100% !important;
-            height: 100% !important;
-            top: 0;
-            left: 0;
-        }
+        /* Esto elimina el fondo azul de carga si se queda pegado */
+        .a-loader-title { display: none !important; }
     </style>
 </head>
 <body>
 
     <div id="ui">
-        <button id="startBtn">COMENZAR EXPERIENCIA</button>
+        <button id="startBtn">ACTIVAR CÁMARA</button>
     </div>
 
-    <video id="vid" src="./video.mp4" 
-           loop="true" 
-           crossorigin="anonymous" 
-           playsinline 
-           webkit-playsinline 
-           style="display:none">
-    </video>
-
     <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: no; filterMinCF: 0.0001; filterBeta: 0.001;" 
-             embedded 
-             color-space="sRGB" 
-             renderer="colorManagement: true, physicallyCorrectLights" 
-             vr-mode-ui="enabled: false" 
-             device-orientation-permission-ui="enabled: false">
+             embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" 
+             vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
         
+        <a-assets>
+            <video id="vid" src="./video.mp4" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
+        </a-assets>
+
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0">
             <a-video material="shader: chromakey; src: #vid; color: 0 1 0; threshold: 0.1" 
-                     width="1" 
-                     height="1" 
-                     position="0 0 0.01">
+                     width="1" height="1" position="0 0 0.01">
             </a-video>
         </a-entity>
     </a-scene>
@@ -136,15 +99,8 @@
             const arSystem = sceneEl.systems["mindar-image-system"];
             arSystem.start(); 
             
-            // Intentamos reproducir con audio. Si falla, al menos el tracking arranca.
-            video.play().then(() => {
-                console.log("Video con audio arrancó");
-            }).catch(err => {
-                console.log("Audio bloqueado, reproduciendo en silencio:", err);
-                video.muted = true;
-                video.play();
-            });
-            
+            // Forzamos el play del video
+            video.play();
             btn.style.display = "none";
         });
     </script>
