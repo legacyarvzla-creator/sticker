@@ -1,48 +1,90 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
-        body { margin: 0; overflow: hidden; background-color: black; }
-        #ui { 
-            position: absolute; z-index: 9999; bottom: 20px; left: 50%; 
-            transform: translateX(-50%); width: 100%; text-align: center;
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #000; 
+            width: 100vw;
+            height: 100vh;
         }
+
+        /* Forzamos que el canvas de MindAR ocupe toda la pantalla */
+        .mindar-ui-overlay { z-index: 100; }
+        
+        #ui { 
+            position: absolute; 
+            z-index: 9999; 
+            bottom: 30px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            width: 100%; 
+            text-align: center;
+        }
+
         button { 
-            padding: 15px 30px; border-radius: 30px; border: none; 
-            background: #e91e63; color: white; font-weight: bold; cursor: pointer;
+            padding: 16px 32px; 
+            border-radius: 50px; 
+            border: none; 
+            background: #e91e63; 
+            color: white; 
+            font-size: 18px;
+            font-weight: bold; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+
+        /* Corrección para la pantalla dividida */
+        video, canvas {
+            width: 100% !important;
+            height: 100% !important;
+            top: 0;
+            left: 0;
+            object-fit: cover;
         }
     </style>
 </head>
 <body>
+
     <div id="ui">
-        <button id="startBtn">ACTIVAR CÁMARA</button>
+        <button id="startBtn">ACTIVAR EXPERIENCIA</button>
     </div>
 
-    <video id="vid" src="./video.mp4" loop crossorigin="anonymous" muted playsinline webkit-playsinline style="display:none"></video>
+    <video id="vid" src="./video.mp4" 
+           loop="true" 
+           crossorigin="anonymous" 
+           muted="true" 
+           playsinline 
+           webkit-playsinline 
+           style="display:none">
+    </video>
 
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind;" 
-         embedded color-space="sRGB" 
-         renderer="colorManagement: true, physicallyCorrectLights" 
-         vr-mode-ui="enabled: false" 
-         device-orientation-permission-ui="enabled: false">
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: no;" 
+             embedded 
+             color-space="sRGB" 
+             renderer="colorManagement: true, physicallyCorrectLights" 
+             vr-mode-ui="enabled: false" 
+             device-orientation-permission-ui="enabled: false">
         
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-<a-entity mindar-image-target="targetIndex: 0">
-    <a-plane color="blue" opacity="0.5" width="1" height="1" position="0 0 0"></a-plane>
-    
-   <a-video src="#tuVideoID" 
-         width="1" 
-         height="1" 
-         position="0 0 0" 
-         rotation="0 0 0">
-</a-video>
-</a-entity>
-       
+        <a-assets>
+            </a-assets>
+
+        <a-camera position="0 0 0" look-controls="enabled: false" cursor="fuse: false; rayOrigin: mouse;" raycaster="far: 10000; objects: .clickable"></a-camera>
+
+        <a-entity mindar-image-target="targetIndex: 0">
+            <a-plane color="blue" opacity="0.3" width="1" height="1" position="0 0 0"></a-plane>
             
+            <a-video src="#vid" 
+                     width="1" 
+                     height="1" 
+                     position="0 0 0.01">
+            </a-video>
+        </a-entity>
     </a-scene>
 
     <script>
@@ -51,15 +93,24 @@
         const video = document.querySelector("#vid");
 
         btn.addEventListener('click', () => {
-            // 1. Iniciamos la escena de MindAR manualmente
+            // Iniciamos MindAR
             const arSystem = sceneEl.systems["mindar-image-system"];
             arSystem.start(); 
             
-            // 2. Despertamos el video
-            video.play();
+            // Forzamos reproducción del video
+            video.play().then(() => {
+                console.log("Video reproduciendo");
+            }).catch(err => {
+                console.log("Error en video:", err);
+            });
             
-            // 3. Quitamos el botón
+            // Escondemos UI
             btn.style.display = "none";
+        });
+
+        // Eventos de detección para debug (opcional, te avisa en consola si detecta)
+        sceneEl.addEventListener("targetFound", event => {
+            console.log("¡Target detectado!");
         });
     </script>
 </body>
