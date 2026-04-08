@@ -6,38 +6,34 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: transparent; }
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: sans-serif; }
         
-        /* Aseguramos que la cámara esté al fondo y sea visible */
-        canvas { 
-            position: absolute !important; 
-            z-index: 0 !important; 
-        }
-
+        /* UI Limpia */
         #ui { 
             position: absolute; z-index: 1000; bottom: 30px; left: 50%; 
             transform: translateX(-50%); width: 100%; text-align: center;
         }
 
         .btn { 
-            padding: 16px 32px; border-radius: 50px; border: none; 
-            background: #00f2ff; color: #000; font-weight: bold; font-size: 18px;
+            padding: 18px 36px; border-radius: 50px; border: none; 
+            background: linear-gradient(45deg, #00f2ff, #00c8ff); 
+            color: #000; font-weight: bold; font-size: 18px; text-transform: uppercase;
             box-shadow: 0 4px 15px rgba(0,242,255,0.4);
-            cursor: pointer;
+            cursor: pointer; transition: all 0.3s ease;
         }
+        
+        .btn:active { transform: scale(0.95); box-shadow: 0 2px 5px rgba(0,242,255,0.2); }
     </style>
 </head>
 <body>
 
     <div id="ui">
-        <button id="startBtn" class="btn">ACTIVAR CÁMARA</button>
+        <button id="startBtn" class="btn">Iniciar AR</button>
     </div>
 
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: no;" 
-             embedded 
-             renderer="colorManagement: true; alpha: true; antialias: true;" 
-             vr-mode-ui="enabled: false" 
-             device-orientation-permission-ui="enabled: false">
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; uiLoading: no; uiScanning: no; filterMinCF: 0.0001; filterBeta: 0.001;" 
+             embedded renderer="colorManagement: true; alpha: true" 
+             vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
         
         <a-assets>
             <video id="vid" src="./video.mp4" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
@@ -46,11 +42,15 @@
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0">
-            <a-video src="#vid" 
-                     width="1" height="1" 
-                     position="0 0 0.1" 
-                     material="shader: flat; blending: additive; transparent: true">
-            </a-video>
+            
+            <a-entity id="videoContainer" position="0 0 0" rotation="0 0 0">
+                <a-video src="#vid" 
+                         width="1" height="1" 
+                         position="0 0 0.01" 
+                         material="shader: flat; blending: additive; transparent: true; side: double">
+                </a-video>
+            </a-entity>
+            
         </a-entity>
     </a-scene>
 
@@ -61,26 +61,9 @@
 
         btn.addEventListener('click', () => {
             const arSystem = sceneEl.systems["mindar-image-system"];
-            
-            // 1. Iniciamos la cámara primero
-            arSystem.start(); 
-            
-            // 2. Esperamos un segundo para que la cámara estabilice antes de soltar el audio
-            setTimeout(() => {
-                video.muted = false;
-                video.play().catch(() => {
-                    // Si el navegador se pone terco con el audio, lo silenciamos para que al menos se vea el video
-                    video.muted = true;
-                    video.play();
-                });
-            }, 1000);
-            
+            arSystem.start(); // Encender cámara
+            video.play();     // Encender video + audio
             btn.style.display = "none";
-        });
-
-        // Evento de seguridad: Si la cámara falla, esto nos avisará en la consola
-        sceneEl.addEventListener("arError", (event) => {
-            console.log("Error de AR detectado:", event);
         });
     </script>
 </body>
